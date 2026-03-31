@@ -10,7 +10,7 @@ Run the following SQL command in your Supabase dashboard:
 ```sql
 UPDATE public.users 
 SET role = 'admin' 
-WHERE email = 'laharnaik13@gmail.com';
+WHERE email = 'laharinaik13@gmail.com';
 ```
 
 ## 2. Accessing the Admin Portal

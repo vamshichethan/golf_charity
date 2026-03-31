@@ -32,6 +32,11 @@ export default function Pricing() {
         return;
       }
 
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
       router.push("/dashboard?subscription=active");
     } catch (err) {
       setError("Network error. Please try again.");

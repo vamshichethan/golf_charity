@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: "2025-02-24.acacia", // Using latest stable
+});
+
+// Configure your Stripe Price IDs here or in .env.local
+const PRICE_IDS = {
+  monthly: process.env.STRIPE_MONTHLY_PRICE_ID || "price_1QuNo9C3186vL3wYToi9L7C9", // Placeholder
+  yearly: process.env.STRIPE_YEARLY_PRICE_ID || "price_1QuNpxC3186vL3wYa6Z7j1P3",   // Placeholder
+};
 
 export async function POST(req) {
   try {
@@ -18,40 +29,39 @@ export async function POST(req) {
 
     const { tier } = await req.json();
 
-    if (!tier || !["monthly", "yearly"].includes(tier)) {
+    if (!tier || !PRICE_IDS[tier]) {
       return NextResponse.json(
         { error: "Invalid subscription tier." },
         { status: 400 }
       );
     }
 
-    // Set renewal date based on tier
-    const renewalDate = new Date();
-    if (tier === "monthly") {
-      renewalDate.setMonth(renewalDate.getMonth() + 1);
-    } else {
-      renewalDate.setFullYear(renewalDate.getFullYear() + 1);
-    }
-
-    // Create Subscription directly in Supabase (Free/Mock mode)
-    const { error: subError } = await supabase.from("subscriptions").upsert(
-      {
-        user_id: user.id,
-        status: "active",
+    // Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: PRICE_IDS[tier],
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?session_id={CHECKOUT_SESSION_ID}&subscription=active`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing`,
+      customer_email: user.email,
+      metadata: {
+        userId: user.id,
         tier: tier,
-        next_renewal: renewalDate.toISOString(),
       },
-      { onConflict: "user_id" }
-    );
+    });
 
-    if (subError) throw subError;
-
-    return NextResponse.json({ success: true, message: "Subscription activated!" });
+    return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error("Subscription error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to activate subscription." },
+      { error: "Failed to initiate checkout. Check your Stripe configuration." },
       { status: 500 }
     );
   }
 }
+
