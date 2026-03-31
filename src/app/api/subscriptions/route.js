@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia", // Using latest stable
-});
-
-// Configure your Stripe Price IDs here or in .env.local
-const PRICE_IDS = {
-  monthly: process.env.STRIPE_MONTHLY_PRICE_ID || "price_1QuNo9C3186vL3wYToi9L7C9", // Placeholder
-  yearly: process.env.STRIPE_YEARLY_PRICE_ID || "price_1QuNpxC3186vL3wYa6Z7j1P3",   // Placeholder
-};
-
+// Removed Stripe for direct subscription testing
 export async function POST(req) {
   try {
     const supabase = await createClient();
@@ -29,39 +19,36 @@ export async function POST(req) {
 
     const { tier } = await req.json();
 
-    if (!tier || !PRICE_IDS[tier]) {
+    if (!tier) {
       return NextResponse.json(
         { error: "Invalid subscription tier." },
         { status: 400 }
       );
     }
 
-    // Create Stripe Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price: PRICE_IDS[tier],
-          quantity: 1,
-        },
-      ],
-      mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?session_id={CHECKOUT_SESSION_ID}&subscription=active`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing`,
-      customer_email: user.email,
-      metadata: {
-        userId: user.id,
-        tier: tier,
-      },
-    });
+    // Mock direct subscription (Setting role to member or similar if needed)
+    // In a real app without Stripe, you'd just update the database here.
+    const { error: updateError } = await supabase
+      .from("subscriptions")
+      .upsert({
+        user_id: user.id,
+        status: "active",
+        plan: tier,
+        current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
 
-    return NextResponse.json({ url: session.url });
+    if (updateError) {
+      return NextResponse.json({ error: "Failed to update subscription." }, { status: 500 });
+    }
+
+    // Redirect to dashboard
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?subscription=active`;
+    return NextResponse.json({ url: dashboardUrl });
   } catch (error) {
     console.error("Subscription error:", error);
     return NextResponse.json(
-      { error: "Failed to initiate checkout. Check your Stripe configuration." },
+      { error: "Failed to process subscription." },
       { status: 500 }
     );
   }
 }
-
