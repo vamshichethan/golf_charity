@@ -1,8 +1,17 @@
--- Enable UUID extension
+-- RESET DATABASE (Optional: Uncomment to purge old data)
+-- DROP TRIGGER IF EXISTS enforce_max_5_scores ON public.scores;
+-- DROP TABLE IF EXISTS public.winners;
+-- DROP TABLE IF EXISTS public.draws;
+-- DROP TABLE IF EXISTS public.scores;
+-- DROP TABLE IF EXISTS public.subscriptions;
+-- DROP TABLE IF EXISTS public.users;
+-- DROP TABLE IF EXISTS public.charities;
+
+-- ENABLE UUID EXTENSION
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- CHARITIES TABLE
-CREATE TABLE public.charities (
+-- 1. CHARITIES TABLE (Impact Partners)
+CREATE TABLE IF NOT EXISTS public.charities (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     description TEXT,
@@ -11,8 +20,8 @@ CREATE TABLE public.charities (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- USERS TABLE (extends Supabase Auth)
-CREATE TABLE public.users (
+-- 2. USERS TABLE (Circle Members)
+CREATE TABLE IF NOT EXISTS public.users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     role TEXT DEFAULT 'user' CHECK (role IN ('user', 'admin')),
@@ -21,19 +30,19 @@ CREATE TABLE public.users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- SUBSCRIPTIONS TABLE
-CREATE TABLE public.subscriptions (
+-- 3. SUBSCRIPTIONS TABLE (Allocations)
+CREATE TABLE IF NOT EXISTS public.subscriptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-    stripe_id TEXT UNIQUE, -- Now optional
+    stripe_id TEXT UNIQUE, 
     status TEXT NOT NULL DEFAULT 'active',
     tier TEXT CHECK (tier IN ('monthly', 'yearly')),
     next_renewal TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- SCORES TABLE
-CREATE TABLE public.scores (
+-- 4. SCORES TABLE (Performance Tracking)
+CREATE TABLE IF NOT EXISTS public.scores (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     score INT NOT NULL CHECK (score >= 1 AND score <= 45),
@@ -41,7 +50,7 @@ CREATE TABLE public.scores (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Function to keep only the last 5 scores per user
+-- 5. AUTO-CLEANUP FUNCTION (Rolling 5 Scores)
 CREATE OR REPLACE FUNCTION maintain_last_5_scores() 
 RETURNS TRIGGER AS $$
 BEGIN
@@ -56,13 +65,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for maintaining last 5 scores
+DROP TRIGGER IF EXISTS enforce_max_5_scores ON public.scores;
 CREATE TRIGGER enforce_max_5_scores
 AFTER INSERT ON public.scores
 FOR EACH ROW EXECUTE PROCEDURE maintain_last_5_scores();
 
--- DRAWS TABLE
-CREATE TABLE public.draws (
+-- 6. DRAWS TABLE (Sweepstakes Engine)
+CREATE TABLE IF NOT EXISTS public.draws (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     date TIMESTAMP WITH TIME ZONE NOT NULL,
     type TEXT CHECK (type IN ('random', 'algorithmic')) NOT NULL,
@@ -74,8 +83,8 @@ CREATE TABLE public.draws (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- WINNERS TABLE
-CREATE TABLE public.winners (
+-- 7. WINNERS TABLE (Disbursements)
+CREATE TABLE IF NOT EXISTS public.winners (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     draw_id UUID REFERENCES public.draws(id) ON DELETE CASCADE,
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -86,13 +95,16 @@ CREATE TABLE public.winners (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Insert Dummy Data for Charities
-INSERT INTO public.charities (name, description, active_status) VALUES
-('Golf For Good', 'Supporting youth development through golf programs.', true),
-('Green Drives', 'Environmental conservation on and off the course.', true),
-('Tee Off Hunger', 'Local food bank support initiatives.', true);
+-- 8. INITIAL DATA SEEDING (Premium Partners)
+-- Use ON CONFLICT to avoid duplicate seeding errors
+INSERT INTO public.charities (name, description, active_status) 
+VALUES
+('The Green Earth Alliance', 'Leading sustainable golf through ecosystem restoration and re-wilding programs.', true),
+('Future Fairways Foundation', 'Elite coaching and life-trajectory scholarships for global youth development.', true),
+('Water For Life International', 'Precision irrigation engineering and clean water access in water-stressed regions.', true)
+ON CONFLICT DO NOTHING;
 
--- Note: Ensure Row Level Security (RLS) is enabled and appropriate policies are applied for production use.
 
--- ADMIN SETUP: After a user signs up via the app, promote them to admin with:
--- UPDATE public.users SET role = 'admin' WHERE email = 'your-admin@email.com';
+UPDATE public.users 
+SET role = 'admin' 
+WHERE email = 'laharinaik13@gmail.com';

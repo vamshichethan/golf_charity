@@ -1,37 +1,50 @@
-import { Inter } from "next/font/google";
+import { Outfit, Playfair_Display } from "next/font/google";
+import Link from "next/link";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const outfit = Outfit({
   subsets: ["latin"],
+  variable: "--font-outfit",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
 });
 
 export const metadata = {
-  title: "Swing For Good | Golf Charity Platform",
-  description: "Track your golf scores, participate in monthly draws, and support your favorite charities with every swing.",
+  title: "Fairway Philanthropy | Elite Golf Charity Platform",
+  description: "A premium platform where your love for the game fuels global change. Join the elite club of charitable golfers.",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="en" className={`${outfit.variable} ${playfair.variable}`}>
       <body>
-        <div className="app-container">
-          <header className="navbar">
-            <div className="nav-brand">SwingForGood</div>
-            <nav className="nav-links">
-              <a href="/">Home</a>
-              <a href="/charities">Charities</a>
-              <a href="/dashboard">Dashboard</a>
-              <a href="/login" className="btn-primary">Sign In</a>
+        <header>
+          <div className="nav-container">
+            <Link href="/" className="logo">
+              Fairway <span style={{ color: 'var(--primary)' }}>Philanthropy</span>
+            </Link>
+            <nav>
+              <ul className="nav-links">
+                <li><Link href="/">Overview</Link></li>
+                <li><Link href="/charities">Philanthropy</Link></li>
+                <li><Link href="/dashboard">Member Portal</Link></li>
+                <li><Link href="/login" className="btn btn-primary">Join Club</Link></li>
+              </ul>
             </nav>
-          </header>
-          <main className="main-content">
-            {children}
-          </main>
-          <footer className="footer">
-            <p>&copy; {new Date().getFullYear()} SwingForGood by Digital Heroes. Sample build.</p>
-          </footer>
-        </div>
+          </div>
+        </header>
+        <main>
+          {children}
+        </main>
+        <footer style={{ padding: '4rem 2rem', borderTop: '1px solid var(--glass-border)', marginTop: '4rem' }}>
+          <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="logo" style={{ fontSize: '1.2rem' }}>Fairway Philanthropy</div>
+            <p style={{ opacity: 0.5, fontSize: '0.875rem' }}>&copy; {new Date().getFullYear()} Elite Golfing Circle. All Rights Reserved.</p>
+          </div>
+        </footer>
       </body>
     </html>
   );

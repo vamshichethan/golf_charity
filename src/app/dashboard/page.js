@@ -1,8 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import styles from "./page.module.css";
-import { Trophy, Heart, Activity, Award } from "lucide-react";
+import { Trophy, Heart, Activity, Award, Plus, Calendar, Target, ExternalLink } from "lucide-react";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -65,79 +65,139 @@ export default async function Dashboard() {
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', gap: '1rem', flexWrap: 'wrap' }}>
-          <div>
-            <h1 className={styles.title}>⛳ Score Management</h1>
-            <p className={styles.subtitle}>
-              {subscription ? (
-                <>Subscription: <strong style={{ color: 'var(--success)' }}>Active ({subscription.tier})</strong></>
-              ) : (
-                <>Status: <strong style={{ color: 'var(--warn)' }}>Free Tier</strong> (Subscribe for Draws)</>
-              )}
-            </p>
-          </div>
-          <a href="/pricing" className={styles.manageLink}>View Plans</a>
+    <div className="container animate-fade" style={{ paddingTop: '4rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem' }}>
+        <div>
+          <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>Member <span className="text-gradient">Portal</span></h1>
+          <p style={{ opacity: 0.6 }}>Welcome back, {user?.email?.split('@')[0] || 'Member'}. Your performance overview.</p>
+        </div>
+        <div className="glass-panel" style={{ padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: subscription ? 'var(--primary)' : '#f59e0b' }}></div>
+          <span style={{ fontWeight: '600' }}>{subscription ? `Pro (${subscription.tier})` : 'Silver Tier'}</span>
         </div>
       </div>
 
-      <div className={styles.dashboardContainer}>
-        <div className="main-col">
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}><Activity size={20} color="var(--primary)" /> Rolling 5 Scores</h2>
-            <p className={styles.infoText}>
-              Enter your latest scores (1–45 Stableford). We only store your last 5; adding a new one replaces the oldest automatically.
-            </p>
-            <div className={styles.scoreList}>
-              {scores.map((s) => (
-                <div key={s.id} className={styles.scoreItem}>
-                  <span className={styles.scoreDate}>{new Date(s.date).toLocaleDateString()}</span>
-                  <span className={styles.scoreValue}>{s.score} pts</span>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '2rem' }}>
+        
+        {/* Main Stats */}
+        <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          <div className="glass-panel" style={{ padding: '2.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+              <h2 style={{ fontSize: '1.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Activity size={24} color="var(--primary)" /> Rolling Performance
+              </h2>
+              <form action={addScore} style={{ display: 'flex', gap: '1rem' }}>
+                <input 
+                  type="number" 
+                  name="score" 
+                  min="1" 
+                  max="45" 
+                  placeholder="New Score" 
+                  required 
+                  style={{ 
+                    background: 'rgba(255,255,255,0.05)', 
+                    border: '1px solid var(--glass-border)', 
+                    borderRadius: '0.75rem', 
+                    padding: '0.5rem 1rem', 
+                    color: '#fff',
+                    width: '120px'
+                  }} 
+                />
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.2rem' }}>
+                  <Plus size={18} /> Add
+                </button>
+              </form>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1.5rem' }}>
+              {scores.map((s, idx) => (
+                <div key={s.id} className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', background: idx === 0 ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass)' }}>
+                  <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.5, marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                    {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                  <span style={{ fontSize: '2.5rem', fontWeight: '700', fontFamily: 'Playfair Display, serif' }}>{s.score}</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', opacity: 0.5 }}>Points</span>
                 </div>
               ))}
-              {scores.length === 0 && <p className={styles.subtitle}>No scores recorded yet. Add your first score below.</p>}
+              {[...Array(Math.max(0, 5 - scores.length))].map((_, i) => (
+                <div key={i} className="glass-panel" style={{ padding: '1.5rem', textAlign: 'center', borderStyle: 'dashed', opacity: 0.3 }}>
+                  <span style={{ display: 'block', fontSize: '0.75rem', marginBottom: '0.5rem' }}>Pending</span>
+                  <span style={{ fontSize: '2.5rem', fontWeight: '700' }}>-</span>
+                </div>
+              ))}
             </div>
-            
-            <form action={addScore} className={styles.scoreInput}>
-              <input type="number" name="score" min="1" max="45" placeholder="Score (1-45)" className={styles.inputField} required />
-              <button type="submit" className={styles.btnAction} style={{width: 'auto'}}>Save Score</button>
-            </form>
           </div>
 
-          {/* Latest Draw Info */}
-          {latestDraw && (
-            <div className={styles.card}>
-              <h2 className={styles.cardTitle}><Trophy size={20} color="#ffd700" /> Latest Draw Results</h2>
-              <div className={styles.drawResults}>
-                <div className={styles.drawNumbers}>
-                  {latestDraw.winning_numbers.map((num, i) => (
-                    <div key={i} className={styles.numberBall}>{num}</div>
-                  ))}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div className="glass-panel" style={{ padding: '2rem' }}>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Trophy size={20} color="var(--accent)" /> Latest Sweepstakes
+              </h3>
+              {latestDraw ? (
+                <div>
+                  <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    {latestDraw.winning_numbers.map((num, i) => (
+                      <div key={i} style={{ width: '40px', height: '40px', background: 'var(--primary)', color: '#000', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                        {num}
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '0.875rem', opacity: 0.5 }}>Completed on {new Date(latestDraw.date).toLocaleDateString()}</p>
                 </div>
-                <p className={styles.drawMeta}>
-                  Draw held on {new Date(latestDraw.date).toLocaleDateString()} • {latestDraw.type} strategy
-                </p>
+              ) : (
+                <p style={{ opacity: 0.5 }}>Waiting for next draw cycle...</p>
+              )}
+            </div>
+
+            <div className="glass-panel" style={{ padding: '2rem', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), transparent)' }}>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Heart size={20} color="#f87171" /> Philanthropy
+              </h3>
+              <p style={{ fontWeight: '600', marginBottom: '0.5rem' }}>{charity.name}</p>
+              <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', marginBottom: '1rem', overflow: 'hidden' }}>
+                <div style={{ width: '10%', height: '100%', background: 'var(--primary)' }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', opacity: 0.6 }}>
+                <span>Fixed Contribution</span>
+                <span>{charity.percentage}%</span>
               </div>
             </div>
-          )}
-        </div>
-
-        <div className="side-col">
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}><Heart size={20} color="var(--error)" /> My Charity</h2>
-            <p style={{marginBottom: '1rem', color: 'var(--secondary)'}}>{charity.name}</p>
-            <p><strong>Contribution:</strong> {charity.percentage}%</p>
-            <p style={{marginTop: '0.5rem'}}><em>Fixed 10% from your membership.</em></p>
-            <a href="/charities" className={styles.btnAction} style={{marginTop: '1rem', background: 'var(--primary)', textAlign: 'center', display: 'block', textDecoration: 'none'}}>Change Charity</a>
           </div>
 
-          <div className={styles.card}>
-            <h2 className={styles.cardTitle}><Trophy size={20} color="var(--success)" /> Draw Status</h2>
-            <p style={{marginBottom: '0.5rem'}}>Next Draw: <strong>Monthly</strong></p>
-            <p style={{color: 'var(--secondary)', fontSize: '0.875rem'}}>Your rolling 5 scores form your ticket automatically. Keep them updated!</p>
-          </div>
         </div>
+
+        {/* Sidebar Info */}
+        <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          
+          <div className="glass-panel" style={{ padding: '2rem' }}>
+            <h3 style={{ marginBottom: '1.5rem' }}>Quick Actions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Link href="/charities" className="btn btn-outline" style={{ justifyContent: 'space-between', width: '100%' }}>
+                Change Beneficiary <ExternalLink size={16} />
+              </Link>
+              <Link href="/pricing" className="btn btn-outline" style={{ justifyContent: 'space-between', width: '100%' }}>
+                Membership Plans <Target size={16} />
+              </Link>
+              <button className="btn btn-outline" style={{ justifyContent: 'space-between', width: '100%', opacity: 0.5, cursor: 'not-allowed' }}>
+                Print Tax Certificate <Calendar size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '2rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+            <Award size={32} color="var(--primary)" style={{ marginBottom: '1rem' }} />
+            <h3 style={{ marginBottom: '0.5rem' }}>Pro Status</h3>
+            <p style={{ fontSize: '0.875rem', opacity: 0.6, marginBottom: '1.5rem' }}>
+              Unlock advanced analytics and exclusive tournament entries.
+            </p>
+            <Link href="/pricing" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+              Upgrade Now
+            </Link>
+          </div>
+
+        </div>
+
       </div>
     </div>
   );

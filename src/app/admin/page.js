@@ -23,7 +23,10 @@ export default async function AdminDashboard() {
     .eq("id", user.id)
     .single();
 
-  if (!userData || userData.role !== "admin") {
+  // Automatic admin bypass for the configured ADMIN_EMAIL in .env.local
+  const isEnvAdmin = process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL;
+
+  if (!isEnvAdmin && (!userData || userData.role !== "admin")) {
     redirect("/admin/login");
   }
 
